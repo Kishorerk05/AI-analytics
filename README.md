@@ -305,7 +305,7 @@ docker-compose down
 ```
 🧩 Design Decisions
 
-FastAPI vs Flask: Chose FastAPI for its async support, automatic OpenAPI docs, and better performance in production.
+FastAPI vs Flask: Chose FastAPI for its async support and better performance in production.
 
 - Ollama for LLMs: Enables local, private inference without relying on external APIs. Easier to run offline and reduces cost.
 - ChromaDB vs Pinecone/Weaviate: Selected ChromaDB for lightweight, open-source vector search that integrates easily into Dockerized workflows.
