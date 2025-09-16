@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat AI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Chart.js for charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.8);
+    --accent-color: #00d4ff;
+    --hover-glow: rgba(0, 212, 255, 0.3);
+    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+[data-theme="light"] {
+    --primary-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --glass-bg: rgba(0, 0, 0, 0.05);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --text-primary: #333333;
+    --text-secondary: rgba(51, 51, 51, 0.7);
+    --accent-color: #007acc;
+    --hover-glow: rgba(0, 122, 204, 0.2);
+    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--primary-bg);
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--primary-bg);
+    z-index: -2;
+}
+
+.glass-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+}
+
+/* Login Page */
+.login-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    padding: 40px;
+    z-index: 1000;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header i {
+    font-size: 48px;
+    color: var(--accent-color);
+    margin-bottom: 10px;
+}
+
+.login-header h2 {
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 300;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 20px var(--hover-glow);
+}
+
+.form-group input::placeholder {
+    color: var(--text-secondary);
+}
+
+
+.login-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+    background: var(--hover-glow);
+}
+
+
+/* ===== App Shell (new) ===== */
+.app-shell{
+  position:fixed; top:20px; left:20px; right:20px; bottom:20px;
+  display:grid;
+  grid-template-columns: minmax(300px, 380px) 1fr; /* responsive charts panel */
+  gap:20px;
+  z-index: 1;
+  min-width: 800px; /* prevent layout collapse */
+}
+
+/* ===== Left: Charts Panel ===== */
+.charts-panel{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:16px;
+  overflow:hidden; /* contain internal scroll */
+  min-width: 300px; /* prevent shrinking below this */
+  max-width: 380px; /* prevent growing beyond this */
+  flex-shrink: 0; /* don't shrink when space is tight */
+}
+
+.charts-scroll{
+  overflow:auto;
+  padding-right:4px;
+}
+
+.chart-card{
+  padding:14px;
+  border:1px solid var(--glass-border);
+  border-radius:16px;
+  background:var(--glass-bg);
+  backdrop-filter: blur(14px);
+}
+
+.chart-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+  color:var(--text-primary);
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.chart-sub{
+  font-size:12px; color:var(--text-secondary); font-weight:400;
+}
+
+.chart-wrap{
+  position:relative; width:100%; height:180px;
+}
+
+/* Chat Interface */
+.chat-container {
+    /* was fixed; now fills the right column */
+    display:flex; flex-direction:column;
+    min-height:0; /* enable children flex scrolling */
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+    z-index: 2;
+}
+
+.chat-header {
+    height: 80px;
+    padding: 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--glass-border);
+    border-radius: 20px 20px 0 0;
+}
+
+.chat-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ai-avatar {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.ai-avatar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px var(--hover-glow);
+}
+
+.ai-avatar i {
+    color: white;
+    font-size: 24px;
+}
+
+.chat-title h1 {
+    color: var(--text-primary);
+    font-size: 24px;
+    font-weight: 300;
+}
+
+.chat-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.control-btn {
+    width: 40px;
+    height: 40px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-primary);
+}
+
+.control-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px var(--hover-glow);
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+    opacity: 90%;
+    position: absolute;
+    top: 70px;
+    right: 30px;
+    width: 280px;
+    background: rgba(86, 138, 249, 0.673);
+    backdrop-filter: blur(80px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    display: none;
+    z-index: 100;
+}
+
+.profile-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--glass-border);
+    text-align: center;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+}
+
+.profile-avatar i {
+    color: white;
+    font-size: 24px;
+}
+
+.profile-name {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.profile-menu {
+    padding: 10px 0;
+}
+
+.profile-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-primary);
+}
+
+.profile-item:hover {
+    background: var(--hover-glow);
+}
+
+.profile-item i {
+    width: 20px;
+    text-align: center;
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 24px;
+    background: var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch.light::before {
+    transform: translateX(26px);
+}
+
+/* Chat Messages */
+.chat-messages {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    max-height: none;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden; /* prevent horizontal overflow */
+}
+
+.message {
+    display: flex;
+    margin-bottom: 20px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: messageSlide 0.5s ease forwards;
+}
+
+@keyframes messageSlide {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.user {
+    justify-content: flex-end;
+}
+
+.message-content {
+    max-width: 70%;
+    padding: 15px 20px;
+    border-radius: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.message.user .message-content {
+    background: var(--accent-color);
+    color: white;
+    border-radius: 20px 20px 5px 20px;
+}
+
+.message.bot .message-content {
+    border-radius: 20px 20px 20px 5px;
+}
+
+.message-content:hover {
+    transform: scale(1.02);
+    box-shadow: 0 5px 25px var(--hover-glow);
+}
+
+.message.bot .message-content {
+    white-space: pre-line;
+}
+
+/* Chat Input */
+.chat-input {
+    height: 80px;
+    padding: 20px 30px;
+    border-top: 1px solid var(--glass-border);
+    border-radius: 0 0 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.input-container {
+    flex: 1;
+    position: relative;
+}
+
+.chat-input input {
+    width: 100%;
+    padding: 15px 50px 15px 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 25px;
+    color: var(--text-primary);
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.chat-input input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 20px var(--hover-glow);
+}
+
+.chat-input input::placeholder {
+    color: var(--text-secondary);
+}
+
+.send-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 35px;
+    height: 35px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 50%;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.send-btn:hover {
+    background: linear-gradient(45deg, var(--accent-color), #00a8cc);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 20px var(--hover-glow);
+}
+
+/* Floating Animation */
+.floating-elements {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.floating-element {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    opacity: 0.1;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+/* Hover Trail Effect */
+.cursor-trail {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  .app-shell{ grid-template-columns: 1fr; }
+  .charts-panel{ display:none; } /* hide charts on narrow screens */
+}
+
+@media (max-width: 768px) {
+    .login-container {
+        width: 90%;
+        padding: 30px 20px;
+    }
+    
+    .message-content {
+        max-width: 85%;
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+.show {
+    display: block !important;
+}
+</style>
+</head>
+<body>
+<!-- Floating Background Elements -->
+<div class="floating-elements"></div>
+
+<!-- Cursor Trail -->
+<div class="cursor-trail"></div>
+
+<!-- Login Page -->
+<div class="login-container glass-container" id="loginPage">
+<div class="login-header">
+    <i class="fas fa-robot"></i>
+    <h2>Chat AI</h2>
+</div>
+<form id="loginForm">
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Enter your username" required>
+    </div>
+    <div class="button-container">
+        <button type="submit" class="login-btn" id="loginBtn">
+            Start
+        </button>
+    </div>
+</form>
+</div>
+
+<!-- App Shell: Left (charts) + Right (chat) -->
+<div class="app-shell">
+  <!-- LEFT: Charts Panel -->
+  <aside class="charts-panel glass-container" id="chartsPanel">
+    <div class="charts-scroll">
+      <!-- Chart 1 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <span>Cost & Service Analysis</span>
+          <span class="chart-sub">Cost vs Service Instances</span>
+        </div>
+        <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+      </div>
+
+      <!-- Chart 2 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <span>Service to Region</span>
+          <span class="chart-sub">Service Distribution by Region</span>
+        </div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+
+      <!-- Chart 3 -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <span>Services · Total Cost Share</span>
+          <span class="chart-sub">Cost Distribution by Service</span>
+        </div>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT: Chat Interface -->
+  <div class="chat-container glass-container" id="chatInterface">
+<div class="chat-header">
+    <div class="chat-title">
+        <div class="ai-avatar" id="aiAvatar">
+            <i class="fas fa-robot"></i>
+        </div>
+        <h1>Chat AI</h1>
+    </div>
+
+</div>
+
+<!-- Profile Dropdown -->
+<div class="profile-dropdown" id="profileDropdown">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="profile-name" id="profileName">User</div>
+    </div>
+    <div class="profile-menu">
+        <div class="profile-item theme-toggle" id="themeToggle">
+            <i class="fas fa-palette"></i>
+            <span>Dark Theme</span>
+            <div class="toggle-switch" id="toggleSwitch"></div>
+        </div>
+        <div class="profile-item" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+        </div>
+    </div>
+</div>
+
+<div class="chat-messages" id="chatMessages">
+    <div class="message bot">
+        <div class="message-content">
+            <i class="fas fa-sparkles"></i> Welcome to Chat AI! How can I assist you today?
+        </div>
+    </div>
+</div>
+
+<div class="chat-input">
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button class="send-btn" id="sendBtn">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+<script>
+class GlassChatUI {
+    constructor() {
+        this.currentUser = null;
+        this.isLightTheme = false;
+        this.charts = {};
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.createFloatingElements();
+        this.setupCursorTrail();
+        this.setupHoverEffects();
+        this.initCharts();  // <-- create charts
+    }
+
+    setupEventListeners() {
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+
+        // AI Avatar click
+        document.getElementById('aiAvatar').addEventListener('click', () => {
+            this.toggleProfileDropdown();
+        });
+
+        // Theme toggle
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            this.toggleTheme();
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.handleLogout();
+        });
+
+        // Send message
+        document.getElementById('sendBtn').addEventListener('click', () => {
+            this.sendMessage();
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.sendMessage();
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#aiAvatar') && !e.target.closest('#profileDropdown')) {
+                document.getElementById('profileDropdown').classList.remove('show');
+            }
+        });
+    }
+
+    handleLogin() {
+        const username = document.getElementById('username').value;
+
+        if (username) {
+            this.currentUser = username;
+            document.getElementById('profileName').textContent = username;
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('loginForm').reset();
+        }
+    }
+
+    handleLogout() {
+        this.currentUser = null;
+        document.getElementById('profileDropdown').classList.remove('show');
+        document.getElementById('loginPage').classList.remove('hidden');
+        document.getElementById('loginForm').reset();
+        
+        // Clear messages
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.innerHTML = `
+            <div class="message bot">
+                <div class="message-content">
+                    <i class="fas fa-sparkles"></i> Welcome to Glass Chat AI! How can I assist you today?
+                </div>
+            </div>
+        `;
+    }
+
+    toggleProfileDropdown() {
+        const dropdown = document.getElementById('profileDropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    toggleTheme() {
+        this.isLightTheme = !this.isLightTheme;
+        const body = document.body;
+        const toggleSwitch = document.getElementById('toggleSwitch');
+        const themeText = document.querySelector('#themeToggle span');
+
+        if (this.isLightTheme) {
+            body.setAttribute('data-theme', 'light');
+            toggleSwitch.classList.add('light');
+            themeText.textContent = 'Light Theme';
+        } else {
+            body.removeAttribute('data-theme');
+            toggleSwitch.classList.remove('light');
+            themeText.textContent = 'Dark Theme';
+        }
+        // Refresh chart colors to match theme
+        this.updateChartTheme();
+    }
+
+    sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+
+        if (message) {
+            this.addMessage(message, 'user');
+            input.value = '';
+
+            // Simulate AI response (replace with actual backend call)
+            setTimeout(() => {
+                this.simulateAIResponse(message);
+            }, 1000);
+        }
+    }
+
+    addMessage(text, sender) {
+        const messagesContainer = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        
+        if (sender === 'bot') {
+            // Check if the message contains HTML (like tables) or SQL code blocks
+            if (text.includes('<table') || text.includes('```sql')) {
+                // Format code blocks
+                let formattedText = text.replace(/```sql\n([\s\S]*?)\n```/g, 
+                    '<pre style="background: var(--glass-bg); padding: 10px; border-radius: 8px; margin: 8px 0; overflow-x: auto; font-family: monospace; font-size: 13px;"><code>$1</code></pre>');
+                
+                contentDiv.innerHTML = `<i class="fas fa-robot"></i> ${formattedText}`;
+            } else {
+                // Parse as Markdown for plain text replies
+                let markdownHtml = text;
+                if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                    markdownHtml = DOMPurify.sanitize(marked.parse(text));
+                }
+                contentDiv.innerHTML = `<i class="fas fa-robot"></i> ${markdownHtml}`;
+            }
+        } else {
+            contentDiv.textContent = text;
+        }
+        
+        messageDiv.appendChild(contentDiv);
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async simulateAIResponse(userMessage) {
+        try {
+            // Show typing indicator
+            this.addMessage("🤔 Analyzing your question...", 'bot');
+            
+            const response = await fetch('http://127.0.0.1:8001/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    question: userMessage
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // Remove typing indicator
+            const messages = document.getElementById('chatMessages');
+            const lastMessage = messages.lastElementChild;
+            if (lastMessage && lastMessage.textContent.includes('🤔 Analyzing')) {
+                messages.removeChild(lastMessage);
+            }
+            
+            // Add the bot's response
+            this.addMessage(data.bot, 'bot');
+            
+            // SQL query removed from UI display
+            
+            // If there are results, show them in a formatted way
+            if (data.rows && data.rows.length > 0) {
+                const tableHtml = this.formatTableResults(data.rows);
+                this.addMessage(`📋 Results:\n${tableHtml}`, 'bot');
+            }
+            
+        } catch (error) {
+            console.error('Error calling API:', error);
+            
+            // Remove typing indicator if it exists
+            const messages = document.getElementById('chatMessages');
+            const lastMessage = messages.lastElementChild;
+            if (lastMessage && lastMessage.textContent.includes('🤔 Analyzing')) {
+                messages.removeChild(lastMessage);
+            }
+            
+            this.addMessage("❌ Sorry, I'm having trouble connecting to the server. Please make sure the backend is running and try again.", 'bot');
+        }
+
+        // Resize: update charts to fit new sizes
+        window.addEventListener('resize', () => {
+            Object.values(this.charts).forEach(ch => ch && ch.resize());
+        });
+    }
+
+    /* ====== Charts ====== */
+    getThemeColors(){
+        const styles = getComputedStyle(document.body);
+        return {
+            text: styles.getPropertyValue('--text-primary').trim(),
+            muted: styles.getPropertyValue('--text-secondary').trim(),
+            accent: styles.getPropertyValue('--accent-color').trim(),
+            border: styles.getPropertyValue('--glass-border').trim()
+        };
+    }
+
+    async initCharts(){
+        const { text, muted, accent, border } = this.getThemeColors();
+
+        // Initialize charts first
+        this.createCharts();
+        
+        // Load real data
+        await this.loadChartData();
+    }
+
+    async loadChartData() {
+        console.log('🔄 Starting chart data loading...');
+        try {
+            // Load Performance KPI data for Chart 1
+            console.log('📊 Fetching KPI data...');
+            const kpiResponse = await fetch('http://127.0.0.1:8001/api/performance/join-kpis');
+            console.log('KPI Response status:', kpiResponse.status);
+            if (kpiResponse.ok) {
+                const kpiData = await kpiResponse.json();
+                console.log('✅ KPI data received:', kpiData);
+                this.updatePerformanceChart(kpiData);
+            } else {
+                console.log('❌ KPI fetch failed:', kpiResponse.status);
+            }
+
+            // Load Service/Region data for Chart 2 (using existing billing data)
+            console.log('📊 Fetching service region data...');
+            const serviceRegionData = await this.fetchServiceRegionData();
+            console.log('✅ Service region data received:', serviceRegionData);
+            this.updateServiceRegionChart(serviceRegionData);
+
+            // Load actual service costs for Chart 3
+            console.log('📊 Fetching service cost data...');
+            const serviceCostData = await this.fetchServiceCostData();
+            console.log('✅ Service cost data received:', serviceCostData);
+            this.updateServiceCostChart(serviceCostData);
+
+            console.log('✅ All chart data loading completed');
+        } catch (error) {
+            console.error('❌ Error loading chart data:', error);
+            // Keep dummy data as fallback
+            this.loadFallbackData();
+        }
+    }
+
+    async fetchServiceRegionData() {
+        try {
+            const response = await fetch('http://127.0.0.1:8001/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: 'Show services by region' })
+            });
+            const data = await response.json();
+            console.log('Service Region Data:', data); // DEBUG: See actual structure
+            console.log('Columns:', data.cols); // DEBUG: See column names
+            console.log('Rows sample:', data.rows?.slice(0, 3)); // DEBUG: See first 3 rows
+            return data.rows || [];
+        } catch (error) {
+            console.error('Error fetching service region data:', error);
+            return [];
+        }
+    }
+
+    async fetchServiceCostData() {
+        try {
+            const response = await fetch('http://127.0.0.1:8001/api/charts/cost-segments');
+            const data = await response.json();
+            console.log('Service Cost Data:', data); // DEBUG: See actual structure
+            return data.data || [];
+        } catch (error) {
+            console.error('Error fetching service cost data:', error);
+            return [];
+        }
+    }
+
+    updatePerformanceChart(kpiData) {
+        console.log('🔄 Updating performance chart with data:', kpiData);
+        if (!kpiData || kpiData.message) {
+            console.log('❌ No KPI data available');
+            return;
+        }
+        
+        const { text } = this.getThemeColors();
+        
+        // Use real data from the backend
+        const summary = kpiData.summary || {};
+        const avgTime = summary.avg_execution_time_seconds || 0;
+        
+        // Get recent queries for labels and execution times
+        const recentQueries = window.queryPerformanceLog || [];
+        const recentData = recentQueries.slice(0, 10); // Get up to 10 most recent queries
+        
+        // Prepare chart data
+        const labels = recentData.map((query, index) => `Query ${index + 1}`);
+        const executionTimes = recentData.map(query => query.execution_time || 0);
+        
+        // If no recent queries, show the average time
+        if (executionTimes.length === 0 && avgTime > 0) {
+            executionTimes.push(avgTime);
+            labels.push('Avg Execution');
+        }
+
+        console.log('📊 Updating chart with:', { labels, executionTimes });
+        this.charts.line.data.labels = labels;
+        this.charts.line.data.datasets[0].data = executionTimes;
+        this.charts.line.update();
+        console.log('✅ Performance chart updated with real data');
+    }
+
+    updateServiceRegionChart(serviceData) {
+        console.log('🔄 Updating service region chart with data:', serviceData);
+        if (!serviceData || serviceData.length === 0) {
+            console.log('❌ No service region data available');
+            return;
+        }
+
+        const regionCounts = {};
+        serviceData.forEach((row, index) => {
+            console.log(`Row ${index}:`, row);
+            
+            // Handle Object rows - look for region-like properties
+            let region = 'Unknown';
+            if (typeof row === 'object' && row !== null) {
+                // Try common region property names
+                region = row.region || row.location || row.resource_location || 
+                        row.resource_group || row.account_region || row.zone ||
+                        Object.values(row).find(val => 
+                            typeof val === 'string' && 
+                            (val.includes('US') || val.includes('Europe') || val.includes('Asia'))
+                        ) || 'Unknown';
+            }
+            
+            console.log(`Extracted region: "${region}" from row:`, row);
+            
+            // Skip if region is clearly not a region (numeric values, etc.)
+            if (typeof region === 'string' && region.trim() !== '') {
+                regionCounts[region] = (regionCounts[region] || 0) + 1;
+            }
+        });
+
+        console.log('Final region counts:', regionCounts);
+        const labels = Object.keys(regionCounts);
+        const data = Object.values(regionCounts);
+
+        this.charts.bar.data.labels = labels;
+        this.charts.bar.data.datasets[0].data = data;
+        this.charts.bar.update();
+        console.log('✅ Service region chart updated');
+    }
+
+    updateServiceCostChart(costData) {
+        console.log('🔄 Updating service cost chart with data:', costData);
+        if (!costData || costData.length === 0) {
+            console.log('❌ No service cost data available, using fallback');
+            // Use fallback data if no real data
+            this.charts.pie.data.labels = ['Virtual Machines', 'Storage', 'Virtual Network', 'Backup', 'Load Balancer'];
+            this.charts.pie.data.datasets[0].data = [35, 25, 20, 12, 8];
+            this.charts.pie.update();
+            return;
+        }
+
+        const serviceCosts = {};
+        costData.forEach((row, index) => {
+            console.log(`Cost Row ${index}:`, row);
+            
+            // Handle the expected data structure from cost-segments API
+            if (typeof row === 'object' && row !== null) {
+                const service = row.service || row.Service || row.service_name || 'Unknown Service';
+                const cost = parseFloat(row.total_cost || row.cost || row.unit_cost || 0);
+                
+                if (service !== 'Unknown Service' && cost > 0) {
+                    serviceCosts[service] = (serviceCosts[service] || 0) + cost;
+                }
+            }
+        });
+
+        console.log('Final service costs:', serviceCosts);
+        
+        if (Object.keys(serviceCosts).length > 0) {
+            const labels = Object.keys(serviceCosts);
+            const values = Object.values(serviceCosts);
+            const total = values.reduce((sum, val) => sum + val, 0);
+            
+            // Convert to percentages
+            const percentages = values.map(val => Math.round((val / total) * 100));
+            
+            this.charts.pie.data.labels = labels;
+            this.charts.pie.data.datasets[0].data = percentages;
+            
+            // Update colors to match the number of services
+            const colors = ['#4A90E2', '#7ED321', '#9013FE', '#00D4FF', '#BD10E0', '#50E3C2', '#F5A623', '#D0021B'];
+            this.charts.pie.data.datasets[0].backgroundColor = colors.slice(0, labels.length);
+        } else {
+            // Fallback if no valid data found
+            this.charts.pie.data.labels = ['Virtual Machines', 'Storage', 'Virtual Network'];
+            this.charts.pie.data.datasets[0].data = [50, 30, 20];
+        }
+        
+        this.charts.pie.update();
+        console.log('✅ Service cost chart updated');
+    }
+
+    createCharts() {
+        const { text, muted, accent, border } = this.getThemeColors();
+
+        // Mixed Chart (Cost & Service Analysis)
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        this.charts.line = new Chart(lineCtx, {
+            type: 'line',
+            data: { 
+                labels: ['Query 1', 'Query 2', 'Query 3', 'Query 4', 'Query 5'], 
+                datasets: [{
+                    label: 'Execution Time (ms)',
+                    data: [0.5, 0.6, 0.4, 0.55, 0.45],
+                    borderColor: accent,
+                    backgroundColor: accent + '20',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: text }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Total Cost ($)',
+                            color: text
+                        },
+                        ticks: { color: muted },
+                        grid: { color: border }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Service Instances',
+                            color: text
+                        },
+                        ticks: { color: muted },
+                        grid: { drawOnChartArea: false, color: border }
+                    },
+                    x: {
+                        ticks: { 
+                            color: muted,
+                            maxRotation: 45
+                        },
+                        grid: { color: border }
+                    }
+                }
+            }
+        });
+
+        // Stacked Bar Chart (Service to Region)
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        this.charts.bar = new Chart(barCtx, {
+            type: 'bar',
+            data: { 
+                labels: ['East US', 'West US', 'Central US', 'North Europe'], 
+                datasets: [{
+                    label: 'Service Count',
+                    data: [12, 8, 15, 6],
+                    backgroundColor: accent,
+                    borderColor: accent,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: { 
+                            color: muted,
+                            maxRotation: 45
+                        },
+                        grid: { color: border }
+                    },
+                    y: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: 'Cost ($)',
+                            color: text
+                        },
+                        ticks: { color: muted },
+                        grid: { color: border }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: text }
+                    }
+                }
+            }
+        });
+
+        // Pie Chart (Services Cost Share)  
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        this.charts.pie = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Virtual Machines', 'Storage', 'Virtual Network', 'Backup', 'Load Balancer', 'Bandwidth'],
+                datasets: [{
+                    data: [22, 22, 17, 12, 12, 15],
+                    backgroundColor: [
+                        '#4A90E2',
+                        '#7ED321', 
+                        '#9013FE',
+                        '#00D4FF',
+                        '#BD10E0',
+                        '#50E3C2'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { 
+                            color: text,
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    loadFallbackData(){
+        const { text, muted, accent, border } = this.getThemeColors();
+        
+        // Fallback data for line chart
+        this.charts.line.data = {
+            labels:['Service A','Service B','Service C','Service D','Service E'],
+            datasets:[{
+                label:'Cost ($)',
+                data:[1200,1900,800,1500,2200],
+                tension:.35,
+                borderColor:accent,
+                backgroundColor: accent + '33',
+                pointRadius:3,
+                fill:true
+            }]
+        };
+        this.charts.line.update();
+
+        // Fallback data for bar chart
+        this.charts.bar.data = {
+            labels:['Group A','Group B','Group C','Group D','Group E'],
+            datasets:[{
+                label:'Cost ($)',
+                data:[3200,1800,2400,1000,2800],
+                backgroundColor: accent + '88',
+                borderColor: accent,
+                borderWidth:1,
+                borderRadius:6
+            }]
+        };
+        this.charts.bar.update();
+
+        // Fallback data for pie chart
+        this.charts.pie.data = {
+            labels:['Region 1','Region 2','Region 3'],
+            datasets:[{
+                data:[68,22,10],
+                backgroundColor:[accent,'#22c55eAA','#ef4444AA'],
+                borderColor:[accent,'#22c55e','#ef4444'],
+                borderWidth:1
+            }]
+        };
+        this.charts.pie.update();
+    }
+
+    updateChartTheme(){
+        const { text, muted, accent, border } = this.getThemeColors();
+        const { line, bar, pie } = this.charts;
+
+        if(line){
+            // Update datasets colors if they exist
+            if(line.data.datasets.length > 0) {
+                line.data.datasets.forEach((dataset, index) => {
+                    if(index === 0) {
+                        dataset.borderColor = accent;
+                        dataset.backgroundColor = accent + '33';
+                    }
+                });
+            }
+            line.options.plugins.legend.labels.color = text;
+            line.options.scales.x.ticks.color = muted; 
+            line.options.scales.y.ticks.color = muted;
+            if(line.options.scales.y1) line.options.scales.y1.ticks.color = muted;
+            line.options.scales.x.grid.color = border; 
+            line.options.scales.y.grid.color = border;
+            line.update();
+        }
+        if(bar){
+            if(bar.data.datasets.length > 0) {
+                bar.data.datasets[0].backgroundColor = accent + '88';
+                bar.data.datasets[0].borderColor = accent;
+            }
+            bar.options.plugins.legend.labels.color = text;
+            bar.options.scales.x.ticks.color = muted; bar.options.scales.y.ticks.color = muted;
+            bar.options.scales.y.grid.color = border;
+            bar.update();
+        }
+        if(pie){
+            pie.options.plugins.legend.labels.color = text;
+            pie.update();
+        }
+    }
+
+    formatTableResults(rows) {
+        if (!rows || rows.length === 0) return "No results found.";
+        
+        const headers = Object.keys(rows[0]);
+        let tableHtml = '<div style="overflow-x: auto; margin: 10px 0;"><table style="border-collapse: collapse; width: 100%; font-size: 12px;">';
+        
+        // Headers
+        tableHtml += '<tr>';
+        headers.forEach(header => {
+            tableHtml += `<th style="border: 1px solid var(--glass-border); padding: 8px; background: var(--glass-bg); text-align: left;">${header}</th>`;
+        });
+        tableHtml += '</tr>';
+        
+        // Rows (limit to first 10 for display)
+        const displayRows = rows.slice(0, 10);
+        displayRows.forEach(row => {
+            tableHtml += '<tr>';
+            headers.forEach(header => {
+                const value = row[header] !== null ? row[header] : 'NULL';
+                tableHtml += `<td style="border: 1px solid var(--glass-border); padding: 8px;">${value}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</table></div>';
+        
+        if (rows.length > 10) {
+            tableHtml += `<p style="font-size: 12px; color: var(--text-secondary);">Showing first 10 of ${rows.length} results</p>`;
+        }
+        
+        return tableHtml;
+    }
+
+    createFloatingElements() {
+        const container = document.querySelector('.floating-elements');
+        const elementCount = 15;
+
+        for (let i = 0; i < elementCount; i++) {
+            const element = document.createElement('div');
+            element.className = 'floating-element';
+            element.style.left = Math.random() * 100 + '%';
+            element.style.top = Math.random() * 100 + '%';
+            element.style.animationDelay = Math.random() * 6 + 's';
+            element.style.animationDuration = (4 + Math.random() * 4) + 's';
+            container.appendChild(element);
+        }
+    }
+
+    setupCursorTrail() {
+        const trail = document.querySelector('.cursor-trail');
+        let mouseX = 0, mouseY = 0;
+        let trailX = 0, trailY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        const animateTrail = () => {
+            const dx = mouseX - trailX;
+            const dy = mouseY - trailY;
+            
+            trailX += dx * 0.1;
+            trailY += dy * 0.1;
+            
+            trail.style.left = trailX - 4 + 'px';
+            trail.style.top = trailY - 4 + 'px';
+            trail.style.opacity = '0.6';
+            
+            requestAnimationFrame(animateTrail);
+        };
+
+        animateTrail();
+
+        // Hide trail when not moving
+        let timeout;
+        document.addEventListener('mousemove', () => {
+            clearTimeout(timeout);
+            trail.style.opacity = '0.6';
+            timeout = setTimeout(() => {
+                trail.style.opacity = '0';
+            }, 1000);
+        });
+    }
+
+    setupHoverEffects() {
+        // Add glow effect to interactive elements
+        const interactiveElements = document.querySelectorAll('.glass-container, .control-btn, .ai-avatar, .send-btn');
+        
+        interactiveElements.forEach(element => {
+            element.addEventListener('mouseenter', (e) => {
+                e.target.style.boxShadow = '0 0 30px var(--hover-glow)';
+            });
+            
+            element.addEventListener('mouseleave', (e) => {
+                e.target.style.boxShadow = '';
+            });
+        });
+
+        // Color wave effect on hover
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            document.body.style.background = `
+                radial-gradient(circle at ${x * 100}% ${y * 100}%, 
+                rgba(0, 212, 255, 0.1) 0%, 
+                transparent 50%), 
+                var(--primary-bg)
+            `;
+        });
+    }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    new GlassChatUI();
+});
+</script>
+</body>
+</html>
