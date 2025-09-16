@@ -303,6 +303,15 @@ netstat -an | findstr :11434
 # Stop conflicting services
 docker-compose down
 ```
+🧩 Design Decisions
+
+FastAPI vs Flask: Chose FastAPI for its async support, automatic OpenAPI docs, and better performance in production.
+
+- Ollama for LLMs: Enables local, private inference without relying on external APIs. Easier to run offline and reduces cost.
+- ChromaDB vs Pinecone/Weaviate: Selected ChromaDB for lightweight, open-source vector search that integrates easily into Dockerized workflows.
+- PostgreSQL: Relational database with strong SQL support, making it ideal for cost aggregation and analytics queries.
+- LangChain Orchestration: Provides conversation memory and smooth chaining of SQL + RAG responses.
+- Docker-based Setup: Ensures reproducibility across environments (Windows, Mac, Linux).
 
 ## 🚀 Deployment
 
@@ -444,3 +453,23 @@ docker exec -i postgres-db psql -U postgres postgres < backup.sql
 ---
 
 **Built  for intelligent cloud cost analysis**
+
+**Future Works:**
+
+**OpenAI LLM Integration:**
+Add support for OpenAI models (e.g., gpt-4.1) for SQL generation to improve accuracy on complex queries.
+
+**Hybrid LLM Strategy:**
+Allow runtime selection between Ollama (local, cost-free) and OpenAI (cloud, more powerful).
+
+**Advanced Analytics:**
+Cost anomaly detection, forecasting, and budget alerts.
+
+**Security Improvements:**
+Remove hardcoded DB password, use secrets manager or .env file.
+
+**Scalability:**
+Kubernetes deployment, autoscaling FastAPI + Ollama services, and monitoring with Prometheus/Grafana.
+
+**Enhanced RAG System:**
+Multi-document ingestion, metadata filters, and support for PDF/CSV.
