@@ -304,32 +304,6 @@ netstat -an | findstr :11434
 docker-compose down
 ```
 
-### Performance Optimization
-
-#### Memory Settings
-```yaml
-# Add to docker-compose.yml for large datasets
-services:
-  db:
-    environment:
-      - POSTGRES_SHARED_BUFFERS=256MB
-      - POSTGRES_EFFECTIVE_CACHE_SIZE=1GB
-```
-
-#### Ollama GPU Support
-```yaml
-# For NVIDIA GPU support
-services:
-  ollama:
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-```
-
 ## 🚀 Deployment
 
 ### Production Deployment
@@ -346,14 +320,6 @@ services:
    # Replace with managed database service
    - DB_HOST=your-prod-db-host
    - DB_PORT=5432
-   ```
-
-3. **Enable HTTPS:**
-   ```yaml
-   # Add reverse proxy (nginx/traefik)
-   labels:
-     - "traefik.enable=true"
-     - "traefik.http.routers.app.rule=Host(`yourdomain.com`)"
    ```
 
 ### Scaling Considerations
@@ -420,16 +386,6 @@ curl http://localhost:8001/
 3. **Make changes and test**
 4. **Submit pull request**
 
-### Code Style
-
-- **Python**: Follow PEP 8
-- **JavaScript**: Use ES6+ features
-- **SQL**: Use uppercase keywords
-- **Docker**: Multi-stage builds preferred
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
